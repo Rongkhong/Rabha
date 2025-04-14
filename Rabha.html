@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rabha Vocabulary Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Inter font globally */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+        /* Style for highlighting matched text */
+        .highlight {
+            background-color: #fff08a; /* Lighter yellow */
+            font-weight: 600; /* Semibold */
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+        /* Scrollbar styling */
+        #results::-webkit-scrollbar, #bookmarks-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        #results::-webkit-scrollbar-track, #bookmarks-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        #results::-webkit-scrollbar-thumb, #bookmarks-list::-webkit-scrollbar-thumb {
+            background: #a8a8a8; /* Lighter gray */
+            border-radius: 10px;
+        }
+        #results::-webkit-scrollbar-thumb:hover, #bookmarks-list::-webkit-scrollbar-thumb:hover {
+            background: #777; /* Darker gray on hover */
+        }
+        /* Ensure icons are vertically centered */
+        .search-icon {
+             position: absolute;
+             right: 0.75rem; /* right-3 */
+             top: 50%;
+             transform: translateY(-50%);
+             height: 1.25rem; /* h-5 */
+             width: 1.25rem; /* w-5 */
+             color: #9ca3af; /* text-gray-400 */
+        }
+        /* Sidebar Styles */
+        #bookmarks-sidebar {
+            position: fixed;
+            top: 0;
+            right: -350px; /* Start off-screen */
+            width: 320px;
+            height: 100%;
+            background-color: white;
+            box-shadow: -4px 0 12px rgba(0,0,0,0.1);
+            transition: right 0.3s ease-in-out;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+        }
+        #bookmarks-sidebar.open {
+            right: 0;
+        }
+        /* Overlay for when sidebar is open */
+        #sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 40;
+            display: none; /* Hidden by default */
+        }
+        #bookmarks-sidebar.open + #sidebar-overlay {
+            display: block;
+        }
+        /* Bookmark button styling */
+        .bookmark-btn {
+            cursor: pointer;
+            color: #9ca3af; /* gray-400 */
+            transition: color 0.2s;
+        }
+        .bookmark-btn:hover {
+            color: #6b7280; /* gray-500 */
+        }
+        .bookmark-btn.bookmarked {
+            color: #4f46e5; /* indigo-600 */
+        }
+        .bookmark-btn.bookmarked:hover {
+            color: #3730a3; /* indigo-800 */
+        }
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4 relative">
+
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg w-full max-w-2xl relative z-10">
+        <button onclick="toggleSidebar()" class="absolute top-4 right-4 p-2 text-gray-500 hover:text-indigo-600 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+        </button>
+
+        <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-6">Rabha Vocabulary Search</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="relative">
+                 <label for="search-rabha-input" class="block text-sm font-medium text-gray-700 mb-1">Search Rabha Words</label>
+                <input
+                    type="text"
+                    id="search-rabha-input"
+                    placeholder="Enter Rabha word..."
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-150 ease-in-out pr-10"
+                    oninput="handleSearch()"
+                />
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="relative">
+                 <label for="search-english-input" class="block text-sm font-medium text-gray-700 mb-1">Search English Meanings</label>
+                <input
+                    type="text"
+                    id="search-english-input"
+                    placeholder="Enter English meaning..."
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-150 ease-in-out pr-10"
+                    oninput="handleSearch()"
+                />
+                 <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+        </div>
+
+        <div id="results-container" class="bg-gray-50 p-4 rounded-lg border border-gray-200 min-h-[200px] max-h-[400px] overflow-y-auto">
+             <div id="results" class="space-y-3">
+                <p class="text-gray-500 text-center">Start typing in either search bar...</p>
+             </div>
+        </div>
+    </div>
+
+    <div id="bookmarks-sidebar">
+        <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-700">Bookmarked Words</h2>
+            <button onclick="toggleSidebar()" class="p-1 text-gray-400 hover:text-gray-600 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="bookmarks-list" class="flex-grow p-4 overflow-y-auto space-y-2">
+            <p class="text-gray-400 text-center text-sm">No bookmarks yet.</p>
+        </div>
+    </div>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+
+    <script>
+        // --- Vocabulary Data (Entries starting with 'a' + Sample of 'b') ---
+        // NOTE: 'a' entries reverted to original extraction. 'b' entries are a sample.
+        const vocabulary = [
+            // Entries starting with 'a' (Reverted Corrections)
+            { word: "-a", class: "suff.", meaning: "indicating habitual present as well as predicative adjective: nasi- a, love or loves; nem-a, is or are good." },
+            { word: "a-bat", class: "n.", meaning: "1. cultivation. 2. (verbal) abat khára, cultivate." },
+            { word: "a-cá", class: "ref.", meaning: "See asá." },
+            { word: "a-di", class: "n.", meaning: "(~ aji) a half share (esp. in rearing animals and cultivating land of another): adi pusia, rear or look after with the contract to share proceeds or offsprings on a fifty- fifty basis." },
+            { word: "a-du", class: "v.i.", meaning: "sit (child language)." },
+            { word: "a-ga-dai", class: "int.", meaning: "of pain or surprise." },
+            { word: "a-gam", class: "v.i.", meaning: "bow, lower one’s head (in prayer, shame etc.), bend forward from waist upwards: agame urgia, bow and greet or show reverence thus." },
+            { word: "a-gui", class: "v.i.", meaning: "go forward or advance in space, make progress to better state: agui réha, advance." },
+            { word: "ai-u man-dai", class: "excl.", meaning: "how beautiful! how wonderful! Oh sorry!" },
+            { word: "ai-a", class: "n.", meaning: "( pl. ~roh) mother. aia baba, n. (echo) parents. aiani khúrah, n. mother tongue." },
+            { word: "ai-cuh", class: "n.", meaning: "aunt in the sense of father’s elder brother’s wife or mother’s elder sister. aicuhbra, n. same as aicuh (definitive)," },
+            { word: "a-jah m¡ -jah", class: "a.", meaning: "giddy, dizzy: ajah m¡jah cáha, feel or be giddy or dizzy." },
+            { word: "a-ji", class: "ref.", meaning: "See adi." },
+            { word: "a-ka", class: "int.", meaning: "of pain." },
+            { word: "ak", class: "v.i.", meaning: "be black: rahkhop ake j¡g¡mbaeta, dark clouds are gathering. akak, a. black: nukhah akak cáha, face be very black." },
+            { word: "a-kal", class: "n.", meaning: "(~ ahkal) starvation, deprivation, poverty: akal cáha, become depraved, starvation sets in." },
+            { word: "ak-ci pak-ci", class: "a.", meaning: "covered with dust and dirt, soiled and shabby: akci pakci cáha, become dirty." },
+            { word: "a-kha", class: "cl.", meaning: "1. for cluster of bananas that grow together in a bunch: réthe akhasa, one hand of bananas. 2. n. one of many small clusters of bananas that grow in a bunch: akha gósa, one cluster of bananas. 3. (verbal) akha r¡ta, pluck or separate a cluster of bananas from stem." },
+            { word: "a-khah-jí", class: "n.", meaning: "soot: ahkhahjí mahkhap khaa, soot accumulates." },
+            { word: "a-khoi", class: "n.", meaning: "rice, maize etc. that is parched and burst open." },
+            { word: "ak-je-ger", class: "v.i.", meaning: "be dark grey (things), pale and dark (people). akje- gerger, v.i. & a. be very pale and dark." },
+            { word: "ak-kho", class: "v.i.", meaning: "be grey, dark grey. akkhokho, v.i. be of very dark grey colour." },
+            { word: "ak-kur", class: "v.i.", meaning: "be dark, black. akkur makur, a. (echo) dark and ugly. akukur, v.i. & a. be dark as a shadow: akkukur kháre nuka, catch a glimpse or see as a passing shadow." },
+            { word: "a-kol", class: "n.", meaning: "1. character, behaviour. 2. (idiom) akol tar nahca, of dubious character, not of good behaviour." },
+            { word: "ak-so-kho", class: "v.i.", meaning: "be of a colour that is a mixture of red and black." },
+            { word: "a-lai", class: "v.t.", meaning: "suspend: alaie tana, keep suspended." },
+            { word: "a-lah", class: "n.", meaning: "1. bamboo framework for a temporary shed with flat roof. 2. (idiom) alah calah, (echo) orphaned, having no one to care for: alah calah cáha, be orphaned, be destitute." },
+            { word: "a-lah-kar", class: "n.", meaning: "a salamander or newt: alahkar b¡ta, be attacked and be pulled away by ~." },
+            { word: "a-la-ri", class: "n.", meaning: "as in: alari kúr, n. a variety of thin flat bamboo strip used as rope or binding material." },
+            { word: "a-la-ri", class: "ref.", meaning: "See sam¹." },
+            { word: "al-da", class: "a.", meaning: "(arch.) separate, different: alda bari, a plot of land away from the house." },
+            { word: "a-li", class: "n.", meaning: "1. raised dividing line between fields in paddy field. 2. (verbal) ali khaa, lay mud and prepare ~. ali tána, trim ~, cut mud and grass along with it from ~." },
+            { word: "al-tu", class: "v.i.", meaning: "be easy. altue, adv. easily." },
+            { word: "a-lu-a", class: "ref.", meaning: "See ná." },
+            { word: "a-mah", class: "n.", meaning: "aunt in the sense of father’s younger brother’s wife or mother’s younger sister; amahbra, same as amah (definitive)." },
+            { word: "am-ba-lu-ri", class: "n.", meaning: "gooseberry." },
+            { word: "am-e", class: "1st. pers. sg. pron.", meaning: "I (definitive)." },
+            { word: "am-ka", class: "n.", meaning: "so and so. amka ph¡ila, n. (echo) so and so. amka temka, n. (echo) so and so." },
+            { word: "am-thé", class: "n.", meaning: "guava." },
+            { word: "-an", class: "suff.", meaning: "(~ -n) denoting emphasis: ah-an, I myself; isi-an, here itself, precisely here; té-an, today itself, now itself." },
+            { word: "-an", class: "suff.", meaning: "a common analysable suffix in many adverbs: d¡grap-an, with face to the ground; kh¡p-an, close together; d¡p-an, in a flash, in a split second; tap-an, suddenly, fast." },
+            { word: "a-na", class: "interrog. & conj.", meaning: "1. (~ atana) why, for what: anaba, for some reason or other; ana neke, for what. 2. for, because. ana ¡ndohbe, conj. the reason being, because." },
+            { word: "a-nah", class: "n.", meaning: "wife’s elder brother or husband’s elder sister. anahbra, n. same as anah (definitive)." },
+            { word: "a-nar-e", class: "adv.", meaning: "(~ andre) slowly. anare anare, adv. very slowly, gradually." },
+            { word: "an-da mun-da", class: "adv.", meaning: "(echo) at random, randomly, without any specific order or arrangement or measurement or plan: anda munda khára, do randomly without a system or definite plan." },
+            { word: "an-da-kai", class: "n.", meaning: "others, other people: andakaini ¡nkaio tanatham, do not pay attention to what others say." },
+            { word: "an-dre", class: "ref.", meaning: "See anare." },
+            { word: "a-nih", class: "num.", meaning: "two, two things: tó mah- anih, two birds; dokhom anih, two stools." },
+            { word: "an-jri-", class: "cl.", meaning: "for the amount that can be contained in both the hands cupped together: anjri-sa mairuh, handful of rice." },
+            { word: "an-tah", class: "n.", meaning: "the others, other people." },
+            { word: "an-tar", class: "v.i.", meaning: "wake up, be awake: nukhar réhe antara, wake from sleep." },
+            { word: "an-tham", class: "num.", meaning: "three, three things: pakja antham, three things." },
+            { word: "ah", class: "1st. pers. sg. pron.", meaning: "(pl. cih, cihnáhah; def. ame). I." },
+            { word: "áh", class: "v.i.", meaning: "1. respond with giggle or loud shrill as when teased, tickled or jostled. 2. pester, ask persistently (esp. children)." },
+            { word: "ah-ca", class: "n.", meaning: "(~ ahsa) 1. shawl-like thin cloth worn by Rabha women from shoulders across the chest. 2. (verbal) ahca ráa, wear or have such a cloth on." },
+            { word: "áh-cer", class: "v.i.", meaning: "(~ áhcir ~ áhcrai) giggle or shout aloud as when children chasing each other at play." },
+            { word: "áh-crai", class: "ref.", meaning: "See áhcer." },
+            { word: "áh-cir", class: "ref.", meaning: "See áhcer." },
+            { word: "ah-ka", class: "n.", meaning: "1. sign, a mark, drawings that are made on the sacrificial floor. 2. (verbal) ahka b¡ta, draw a mark, make a sign." },
+            { word: "ah-kal", class: "ref.", meaning: "See akal." },
+            { word: "ah-kh¡-ni", class: "n.", meaning: "one of many small branch-like parts of an ear of paddy or corn on which grains grow." },
+            { word: "ah-sa", class: "ref.", meaning: "See ahca." },
+            { word: "ao", class: "v.i.", meaning: "yell, shout." },
+            { word: "ap", class: "n.", meaning: "(arch.) mirror." },
+            { word: "a-phe", class: "n.", meaning: "star: aphe phráophráo naia, stars shine brightly (as on a star-studded night). aphe bota, n. Morning or Evening Star. aphe jísrok, n. shooting star, meteor: aphe jísrok th¬ra, shooting star or meteor travels across the sky." },
+            { word: "a-phrai", class: "v.i.", meaning: "writhe in pain." },
+            { word: "ap-kai", class: "v.t.", meaning: "preserve and take good care of (things)." },
+            { word: "ar-di", class: "v.i.", meaning: "pray, ardikai, n. prayer." },
+            { word: "a-ri-roh", class: "n. & a.", meaning: "1. pride, feeling of self-importance. 2. proud, uncontrollable, not easily restrained: ariroh kai, a proud person; másu ariroh, cow that cannot be restrained or kept tied. 3. (verbal) ariroh tunuka, consider and show oneself as great and important." },
+            { word: "a-ro", class: "conj. & prefix", meaning: "1. and, and then: aro ata cáhjo, and then what happened 2. prefixed to verb giving meaning 'again': aro-réhata, went again." },
+            { word: "as", class: "n.", meaning: "1. line, hair-line crack, sinew, fibre, texture of wood or meat. 2. (verbal) as draa, fibrous texture (wood, meat etc.) is big or rough. as b¡ta, form a thin crack." },
+            { word: "a-sa", class: "n.", meaning: "1. hope. 2. (verbal) asa khára, hope, expect. asa mána, be hopeful, have basis for hope. asa toa, have hope." },
+            { word: "a-sá", class: "n.", meaning: "(~ acá) 1. egg of a big variety of common fly. 2. (verbal) asá cita, (fly) deposits eggs." },
+            { word: "as-ta", class: "a.", meaning: "untouched, unused, kept separate: mai asta, extra rice that remains in the cooking pot or rice that is already served and kept but not eaten." },
+            { word: "a-su", class: "n.", meaning: "generic term for varieties of highland paddy that do not require much water." },
+            { word: "a-suk", class: "v.i.", meaning: "be bored: asuke réha, become bored." },
+            { word: "a-su-kuk", class: "v.t.", meaning: "annoy, harass, irritate." },
+            { word: "a-suh", class: "v.t.", meaning: "(~ as¡n) keep for later use, preserve: auhe tana, preserve." },
+            { word: "a-s¡n", class: "ref.", meaning: "See asuh." },
+            { word: "at-a", class: "interrog.", meaning: "1. what (nom.): atatah?, what all? (plural sense). 2. often used along with other interrogative pronouns for emphasis as: ata bisi?, where?; ata bisina?, to where?; ata bekhare?, how? 3. used along with nouns adding meaning 'and related things or etc.': mai ata sáe r¬ba, have meal and come; nen ata rábanata, brought clothes (and other necessary things)." },
+            { word: "at-a-na", class: "interrog. & conj.", meaning: "1. (~ ana) why, for what: atanaba, for some reason or other; atana neke, for what; atani badah, why, on account of what; atani dói, instead of what. 2. for, because. ana ¡ndohbe, conj. the reason being, because." },
+            { word: "at-a-thá-ni", class: "interrog.", meaning: "(~ atotháni) of what kind?, of what character?, of what behaviour?" },
+            { word: "a-tha", class: "n.", meaning: "1. birdlime, sticky substance obtained from a kind of tree which is spread on twigs and placed in branches or on land to trap birds. 2. (verbal) atha saia, spread birdlime or place twigs smeared with birdlime to trap birds." },
+            { word: "a-thi", class: "n. & cl.", meaning: "1. bundle (especially of long things): athi gósa, one bundle. 2. cl. for bundles of long things: athisa, one bundle." },
+            { word: "a-thi-a", class: "n.", meaning: "a variety of banana having seeds inside fruit." },
+            { word: "at-o", class: "interrog.", meaning: "what (acc): náme ato mánjo, what did you get?" },
+            { word: "at-o-thá-ni", class: "ref.", meaning: "See atatháni." },
+
+            // Sample entries starting with 'b' (No corrections applied)
+            { word: "-ba", class: "suff.", meaning: "1. meaning 'also' or 'too': ah-ba, I too, I also. 2. suff., giving an indefinite sense: cah-ba, anyone, someone; ato-ba, something; jasi-ba, anywhere (loc.); jasina-ba, to anywhere (movement away); jana-ba, to or for anyone (dat.); jao-ba, anything (acc.)." },
+            { word: "-ba", class: "suff.", meaning: "1. indicating the gradual coming into effect of what the verb or the adjective means: nem-ba-eta, is becoming better, is improving; rahsah dogó-ba-eta, the sun is rising gradually. 2. suff. indicating movement towards the location of conversation: mám-ba-a, get and bring; nuk-ba-a, see and come; sok- ba-a, arrive; tam-ba-a, leave and come away, put and come away." },
+            { word: "-ba³", class: "suff.", meaning: "indicating past tense: réh-ba, had gone; toh-ba, there was, there used to be." },
+            { word: "-ba", class: "suff.", meaning: "giving attributive adjective of certain verb roots: rah pha-ba tal, rainy season, season of rain." },
+            { word: "bá¹", class: "n.", meaning: "bamboo: bá khándoksa, a certain length of bamboo; bá paosa, section of a bamboo between two nodes or knots. báboma, n. the base of a bamboo or a bamboo cluster. bácatar, n. stump of a bamboo along with bulb, base of bamboo. bácoh, n. bamboo cluster. bádalai, n. branch of bamboo. bágr¡m, n. bamboo grove, a forest of bamboo. bájeger, n. a variety of bamboo. bájon, n. a variety of bamboo. bákucu, n. the very top-most part of a bamboo. bákur, n. binding strips of bamboo. báphak, n. post or pillar of bamboo. báphala, n. one section of a bamboo split into two. bápuk, n. soft inner lining of bamboo. bá sindoi, n. tender or young bamboo. básiri, n. split piece of bamboo. bások, n. upper section of a bamboo. báthe, n. small thick bamboo. bátre (bátrai), n. common thin variety of bamboo. 2. (verbal) bá grana, place or tie bamboo for roof-frame or other structures, bá seta, rub two pieces of bamboo to produce fire. bá sr¡ha, tie or place bamboo lengthwise while constructing sheds, bridges etc." },
+            { word: "bá²", class: "v.i.", meaning: "be pregnant (animals)." },
+            { word: "bá³", class: "v.t.", meaning: "carry children on one's back in a cloth." },
+            { word: "ba-ba", class: "n.", meaning: "(pl. ~roh) dad, father. baba aia, n. (echo) parents." },
+            { word: "ba-bi", class: "v.i. & v.t.", meaning: "(~ bhabi) think, feel. babia gunaia, v. (echo) consider well, think, think over." },
+            { word: "ba-bra", class: "n.", meaning: "1. (def.; pl. ~tah). father, male parent. babradomka ~ babradonka, n. stepfather. babra jíbra, n. (echo) parents, father and mother. babrasah, n. father and child: babrasah metham, father and two children; babrasah sarijon, father and three children. 2. (verbal) babra coka, adopt someone as ones father through a ceremony." },
+            { word: "bá-ca-ka-ti", class: "n.", meaning: "binding material prepared by splitting bamboo laterally into fine thin strips such that every strip has one edge of it from the outer hide, a bamboo strip that has the outer skin of bamboo, a piece of bamboo sharpened along its length and used as blade." },
+            { word: "ba-ci-a", class: "cl. & n.", meaning: "(~ batcia) 1. cl. for meals: baciasa, one meal. 2. n. meal; bacia gósa, one meal." },
+            { word: "ba-da¹", class: "n. & cl.", meaning: "1. n. bunch (coconut, betel nut etc.). 2. cl. for a bunch of coconut, betel nut etc.: badasa kui, a bunch of betel nut. 3. (verbal) bada deha, spread or put forth a bunch." },
+            { word: "ba-da²", class: "n.", meaning: "a temporary shed with flat roof: bada hama, build a ~. badaphak, n. post for or of a ~." },
+            { word: "ba-da-di-ka", class: "n.", meaning: "a small variety of woodpecker, crimson-backed woodpecker." },
+            { word: "ba-da-gai", class: "v.t.", meaning: "make another fall down in wrestling or fighting." },
+            { word: "ba-da-gur", class: "v.i.", meaning: "wrestle, fight." },
+            { word: "ba-dah¹", class: "postpos.", meaning: "to n. or noun phrases with gen. suff. meaning 'on account of, because of, about, for the sake of, for the benefit of': kaitani badah, for the sake of the people; nárohi badah, on account of you, because of you, for your sake." },
+            { word: "ba-dah²", class: "v.t.", meaning: "do business." },
+            { word: "ba-di-la", class: "n.", meaning: "bat." },
+            { word: "ba-du-a", class: "n. & a.", meaning: "1. n. one who has to pay a fine for some offence. 2. a. penalised: badua kai, one who has to pay a fine." },
+            { word: "ba-gan", class: "n.", meaning: "plantation, a piece of land cultivated as a garden." },
+            { word: "ba-gi", class: "ref.", meaning: "See nukhah." },
+            { word: "ba-gi-na", class: "n.", meaning: "(~ bhagina) nephew, brother's son (for a sister) or sister's son (for a brother)." },
+            { word: "ba-gi-ni", class: "n.", meaning: "(~ bhagini) niece, brother's daughter (for a sister) or sister's daughter (for a brother)." },
+            { word: "ba-grai", class: "v.i.", meaning: "fall." },
+            { word: "ba-ha", class: "n.", meaning: "lower shoulder." },
+            { word: "-ba-i¹", class: "suff.", meaning: "1. indicating 'location or place where': cika nah-bai, where there is water. 2. suff. indicating 'situation or time when': baikho-bai, during the baikho festival; hatina réh-bai, when or while going to the market." },
+            { word: "-ba-i²", class: "suff.", meaning: "to certain verbs indicating that the action was or happened to be performed after arriving at the place of conversation: bóh-bai, come and meet, happened to arrive to witness; kani-bai, come and say; nuk-bai, come and see; tah-bai, come and put." },
+            { word: "bai¹", class: "v.i.", meaning: "(~ bhai) be yellow." },
+            { word: "bai²", class: "ref.", meaning: "See hal." },
+            { word: "bai³", class: "n.", meaning: "1. (pl. ~bijah). god, deity, spirit. bai ahka, n. palm-lines. baidam, n. a place (generally wooded) dedicated to a deity and where sacrifices are regularly held, a sacrificial place. bai sai, n. (echo) deities. baisuh, n. evil spirit, spirit of some deity. 2. (verbal) bai dáha, coming of a deity into a sacrifice in answer to the act of propitiation. bai dúha, be affected by the power of the deity during sacrifice. bai gojoka, fulfil or redeem the promise made earlier to perform a sacrifice. bai g¡dáha, call on a deity through a sacrifice. bai hahkraia, call out to deity by using vocative style using divine attributes. bai kaka, be attacked (lit. bitten) by a deity inflicting sickness. bai naa, be possessed by (evil) spirit, become mad, be out of senses. bai pusia, keep a household deity and fulfil the requirements of propitiating the deity. bai saka, propitiate a deity by making a promise to offer a sacrifice some time later. bai thata, make a sacrifice to a deity. bai urgia, worship a deity, bow and thus show veneration for a deity." },
+            { word: "bai-du-muk", class: "n.", meaning: "(arch.) arrow." },
+            { word: "bai-ek", class: "n.", meaning: "a variety of bamboo." },
+            { word: "bai-kheh", class: "n.", meaning: "scorpion. baikheh jícap, n. stinging organ of scorpion." },
+            { word: "bai-kho", class: "n.", meaning: "name of a goddess." },
+            { word: "bai-kho-leh", class: "n.", meaning: "1. whirlwind. 2. n. spot on crown of head where hair is whirled around. 3. (verbal). baikholeh rapa, form a whirlwind." },
+            { word: "bai-lo-la", class: "n.", meaning: "1. matted hair. 2. (verbal) bailola khaa, become matted, entangle in thick mass (hair)." },
+            { word: "bai-lu-ri", class: "n.", meaning: "a gale, storm." },
+            { word: "bai-sah-koi", class: "n.", meaning: "bow. baisehkia, n. rainbow." },
+            { word: "bai-seh-ki-a", class: "ref.", meaning: "See baisahkoi." },
+            { word: "bai-sram", class: "v.i.", meaning: "light yellow. baisasram, v.i. be light yellow." },
+            { word: "bai-sthop", class: "ref.", meaning: "See baitrop." },
+            { word: "bai-trop", class: "v.i.", meaning: "(~ baisthop) be light yellow. baitotrop, v.i. be light yellow." },
+            { word: "ba-ji", class: "n.", meaning: "as in: (verbal) baji koa (tera koa tera baji koa), lightning and thunder strike with discharge of imaginary bolt or shaft (believed by locals to be wedge-shaped hard stones sometimes discovered from fields) during crash of thunder." },
+            { word: "ba-jih", class: "adv.", meaning: "1. outside. 2. (idiom) bajina múha, (euphem.) have a desire to pass urine. bajina réha, (euphem.) go out to pass urine." },
+            { word: "bak¹", class: "n.", meaning: "pig, swine, bak kaka, n. pork. bak nogor, n. piggery, a shelter for pigs. bak phaceh, n. pig's longer tooth. bak thop, n. shelter of wild pigs." },
+            { word: "bak²", class: "v.t.", meaning: "wrench things apart with instruments that have been wedged in: bákhan keke baka, pull apart parts of firewood that have been split partially, split firewood apart with axe that has been driven in." },
+            { word: "bak-ca-la", class: "n.", meaning: "thatch of roof that is kept projecting outward from the wall or pillar on the breadthwise side of a house." },
+            { word: "bá-keh", class: "n.", meaning: "axe." },
+            // Added B words below
+            { word: "bá-khan", class: "n.", meaning: "1. firewood. 2. (verbal) bákhan keka, split firewood. bákhan khr¡ha, spread firewood for drying. bákhan roka (bákhan r¡ta), carry firewood from where it had been left for drying, bákhan ruguta, collect firewood." },
+            { word: "ba-kha-nai", class: "v.t.", meaning: "praise, glorify." },
+            { word: "ba-kha-ni", class: "n.", meaning: "a woman who praises herself or speaks boastfully about herself." },
+            { word: "bá-khep", class: "n.", meaning: "forceps (of bamboo)." },
+            { word: "bá-khop", class: "n.", meaning: "bamboo or wood placed lengthwise across rafters in framework of roof." },
+            { word: "bá-khu¹", class: "n.", meaning: "spade-like instrument with broad edge with a straight handle and used as a crowbar." },
+            { word: "bá-khu²", class: "ref.", meaning: "See pancak." },
+            { word: "bak-jap", class: "v.i.", meaning: "be middle-sized (tree). bakjap bakjap, adv. of middle-sized: bakjap bakjap cithoa, is beautiful with the beauty of a medium-sized (tree). bakjajap, a.& adv. beautiful as a middle-sized tree." },
+            { word: "bá-kok", class: "n.", meaning: "bamboo tube, section of a bamboo (used for carrying water or for keeping things in): bákok khúmah khúcepa, cut smooth the cross-section of a bamboo tube." },
+            { word: "ba-kra", class: "n.", meaning: "open expanse of land without many large trees." },
+            { word: "ba-kri", class: "ref.", meaning: "See cakri." },
+            { word: "bak-tuk", class: "n.", meaning: "1. a variety of wild yam or arum stalk of which is used as vegetable. baktuk akkai, n. black variety of. 2. (idiom) baktuk táthen dogota (baktuk nagra koa), root of sprouts at a distance into a new plant." },
+            { word: "ba-lah ba-lah", class: "a.", meaning: "(~ bhalah bhalah) (arch. sacrificial formula). healthy, prosperous: balah balah cáhkhan, may (subj.) become healthy and prosperous." },
+            { word: "bam¹", class: "n.", meaning: "home-made bread made from rice-flour. bamcepa, flat home-made bread that is folded and usu. filled with a mixture of sesame and sugar or coconut and sugar." },
+            { word: "bam²", class: "v.i.", meaning: "bend ones head, submit oneself, surrender: bame ráa, accept in obedience or submissively." },
+            { word: "ba-ma-ri", class: "n.", meaning: "(pl. ~tah, bijah) a married person, a father. bamari jímari, n. (echo) married men and women." },
+            { word: "bam-bur", class: "ref.", meaning: "See banbur." },
+            { word: "bam-ci", class: "n.", meaning: "rice-flour: bamci khr¡ta, sprinkle a mixture of and water (as part of a sacrificial or purification ceremony)." },
+            { word: "bam-ci-kha-li", class: "n.", meaning: "curry made of rice-flour with or without vegetable." },
+            { word: "ban¹", class: "n.", meaning: "winnowing fan." },
+            { word: "ban²", class: "n.", meaning: "1. a magical spell. 2. (verbal) ban koa, cast a spell. ban thiphrita, break a spell." },
+            { word: "bán³", class: "v.i.", meaning: "use or go through (road) frequently: bánan bánan rambe mine réhjo kamibe cáneca, having made several trips the path has become a beaten track but the work was not accomplished." },
+            { word: "-ba-na-bani", class: "suff.", meaning: "meaning 'since, because, on account of': rah phabana rambijah tikap tikap cáhjo, because it rained the roads have become slushy and sticky." },
+            { word: "ba-na", class: "n.", meaning: "flood, bana cika, n. flood water." },
+            { word: "bah", class: "n.", meaning: "(~ bahbah) paternal uncle (father's younger brother). bahbra, n. same as bah (definitive)." }, // Corrected ban -> bah
+            { word: "báh", class: "v.t.", meaning: "block. báha kóma, v.t. (echo) lit. fence to protect, fig. protect and look after." }, // Corrected bán -> báh
+            { word: "bah-al", class: "n.", meaning: "(~ turu) (echo) Bengalies." }, // Corrected ban-al -> bah-al
+            { word: "bah-al-tah", class: "n.", meaning: "1. (sg. & pl.). Bengalies, an individual or individuals of the Bengali community: bahaltah saksa, one Bengali; bahaltah kamih, two Bengalies. 2. bahaltahi, a. of or belonging to the Bengalies. bahal- tahi sábra, a bengali child." }, // Corrected ban-al-tah -> bah-al-tah
+            { word: "bah-bah", class: "ref.", meaning: "See bah." }, // Corrected ban-ban -> bah-bah
+            { word: "bah-bur", class: "a.", meaning: "(~ bambur) undersized, short, fat and stocky." }, // Corrected ban-bur -> bah-bur
+            { word: "bah-khoh", class: "n.", meaning: "cricket: bahkhoh horjeha, cricket chirps." }, // Corrected ban-khon -> bah-khon
+            { word: "bah-khrah", class: "ref.", meaning: "See cihkhrah." }, // Corrected ban-khran -> bah-khrah
+            { word: "bah-ku-a", class: "n.", meaning: "a bamboo rod used for carrying weight attached to both the ends. bahkua táthen, n. bandy legs, bow-shaped legs." }, // Corrected ban-ku-a -> bah-ku-a
+            { word: "bap-dai", class: "n.", meaning: "as in: (verbal) bap-dai khaa, enter into a covenanted relationship as parent and child." },
+            { word: "-ba-pe-ke", class: "suff.", meaning: "meaning 'during, while': khár-bapeke, while doing, réh- bapeke, while going." },
+            { word: "ba-phra", class: "int.", meaning: "poor fellow!" },
+            { word: "bar¹", class: "n.", meaning: "day (in relation to the names of days): tébe ato bar?, what day (is) today?" },
+            { word: "bar²", class: "n.", meaning: "(~ bhar) 1. load. 2. (verbal) bar paia. carry a load, bar tipaia, lay or lift some load on to someone." },
+            { word: "bar³", class: "v.i.", meaning: "return: bare réha, go back." },
+            { word: "bar-⁴", class: "suff.", meaning: "with Assamese numerals especially from upwards of four replacing native classifiers like cao-, phén- and jakri- for repetitive events: pas bar, five times." },
+            { word: "bár", class: "n.", meaning: "1. fire, bárdam, n. fire-place, place where fire is lit (for cooking, warming oneself, and in ancient days for keeping embers live for lighting fire when required). 2. (verbal) bár caka, kindle fire, light fire, make fire. bár dapa, warm oneself by the fire. bár khama, burn, catch fire. bár paka, fire burns brightly, bár mota, fire dies out or goes out, extinguishes. bár seta, produce fire by rubbing together dry bamboo pieces. bár sóa, burn, set something on fire, put fire to something. bár tomota, put out a fire, extinguish a fire. bár toproma (bár tomoka), bury embers in ash so that they do not die out completely to be used for lighting a fire later on. bár tipaka, make fire burn well. 3. (idiom) bár rákhua, cremate." },
+            { word: "ba-ra ba-ra", class: "adv.", meaning: "just opposite, facing each other." },
+            { word: "ba-rai¹", class: "v.t.", meaning: "give, offer, place or keep as an offering, make ready what is required: mai baraia, serve rice and keep everything else ready for meal." },
+            { word: "ba-rai²", class: "n.", meaning: "1. clan, barai huri (barai hur), n. (echo) clans and their inter-relatedness. 2. (verbal) barai dáha, join a clan through a ceremony. barai g¡dáha, legally receive someone into a clan. barai khéa, have no impediments arising from the relationship of clans for matrimonial alliance. barai tata, belong to related clans." },
+            { word: "bá-ram", class: "a.", meaning: "1. last stage in the growth of a cluster of bamboo after which it flowers bears seeds and dies. 2. (verbal) báram phéha, reach the ~ stage." },
+            { word: "bar-bar-i", class: "adv.", meaning: "immediately, without delay." },
+            { word: "bár-ce-keh", class: "n.", meaning: "ember." },
+            { word: "bar-cuh", class: "n.", meaning: "a sub-clan." },
+            { word: "ba-ré", class: "n.", meaning: "1. a temporary dam usually made in paddy fields or across small streams with clay and bamboo to trap fish. 2. (verbal) baré khaa, build such a dam." },
+            { word: "ba-re ba-re", class: "adv.", meaning: "again and again, often, repeatedly." },
+            { word: "ba-ri¹", class: "n.", meaning: "(~ barti) plot of land on which house is built. bari bagan, n. (echo) garden or plot of cultivated land." },
+            { word: "ba-ri²", class: "v.i.", meaning: "increase, become more." },
+            { word: "bár-ji-bra", class: "n.", meaning: "1. (arch). embers that are kept live under ash to be used for lighting fire when required. 2. (uncommon) matches." },
+            { word: "bár-ji-kham", class: "n.", meaning: "a piece of firewood that is burning or is partially burnt." },
+            { word: "bár-joh-da", class: "ref.", meaning: "See bárjohtha." }, // Corrected bárjon-da -> bárjoh-da
+            { word: "bár-joh-tha", class: "n.", meaning: "(~ bárjohda) 1. flambeau, a fire-torch usually made with long pieces of dry bamboo or thatch grass. 2. (verbal) bárjohtha khaa, prepare a ~. bárjohtha sóa, light such a torch." }, // Corrected bárjon-tha -> bárjoh-tha
+            { word: "bár-ju", class: "n.", meaning: "log meant for splitting firewood." },
+            { word: "bar-ka¹", class: "a.", meaning: "1. (arch.) hired, on hire. 2. (verbal) barka b¡ta, take on hire. barka ráa (barkana rábaa), take on hire." },
+            { word: "bár-ka²", class: "ref.", meaning: "See cika." },
+            { word: "bár-kha-dam", class: "n.", meaning: "funeral pyre." },
+            { word: "bár-khu", class: "v.i.", meaning: "emit smoke, be smoky." },
+            { word: "bár-khuh-ci", class: "n.", meaning: "1. smoke: bárkhuhci truh-truh dogta, emit smoke in large quantity, it is smoking greatly. 2. n. a rope-like torch made by twisting and tying hay to keep a smouldering fire, used either for the sake of the fire or as fumigation against insects: bárkhuhci ph¡saka, make such a torch from hay." }, // Corrected bárkhun-ci -> bárkhuh-ci
+            { word: "bar-mah", class: "ref.", meaning: "See seomah." }, // Corrected bar-man -> bar-mah
+            { word: "bar-mas-i", class: "adv.", meaning: "always: barmasi ganda, as always or as usual." },
+            { word: "ba-ró", class: "ref.", meaning: "See cukuh." },
+            { word: "ba-roh", class: "n.", meaning: "1. seat or place for people during a common meal 2. (verbal) baroh daha, arrange or prepare ~ (usu. by placing long pieces of wood or bamboo). baroh khaa, tie backrest (to lean against while sitting). 3. (idiom) baroh b¡ta, segregate and assign separate place for individuals (who for some reason cannot be given place along with others)." }, // Corrected ba-ron -> ba-roh
+            { word: "ba-roh-gi-ri", class: "n.", meaning: "president (of meeting, association etc.)." }, // Corrected ba-ron-gi-ri -> ba-roh-gi-ri
+            { word: "bár-sak", class: "ref.", meaning: "See mocó." },
+            { word: "bár-seh", class: "ref.", meaning: "See bársih." }, // Corrected bár-sen -> bár-seh
+            { word: "bár-sih", class: "n.", meaning: "(~ bárseh) fire-fly, glow-worm." }, // Corrected bár-sin -> bár-sih
+            { word: "bar-ti¹", class: "n.", meaning: "(~ bari) (arch.) garden. barti bai, n. deities in whose honour stones are erected in the garden and where sacrifices are held regularly." },
+            { word: "bar-ti²", class: "n. & cl.", meaning: "1. n. rod for carrying load by two people with the load tied in the middle. 2. cl. for number of trips made carrying some load with: barti-sa, one trip or one rod-load." },
+            { word: "bár-tih-drap", class: "n.", meaning: "tiny spark." }, // Corrected bár-tin-drap -> bár-tih-drap
+            { word: "ba-sai", class: "v.t.", meaning: "select, choose." },
+            { word: "ba-sa-kal-ah", class: "adv.", meaning: "eternal, everlasting. basakalaha, adv. for all times, for eternity." }, // Corrected ba-sa-kal-an -> ba-sa-kal-ah
+            { word: "ba-sa-kal-i", class: "adv.", meaning: "always, for ever, for all times. basakalina, adv. for ever." },
+            { word: "bas-ba-keh", class: "n.", meaning: "a kind of tree with small edible fruits." },
+            { word: "bá-sek", class: "n.", meaning: "cloth for carrying children on the back, cloth tied from shoulder across chest for dances: básek khepe sábra báa (básek khae sábra báa), carry a child on the back in a cloth." },
+            { word: "ba-si", class: "v.t.", meaning: "wash (clothes): nen basia, wash clothes." },
+            { word: "ba-si-a", class: "a.", meaning: "left over from yesterday (food, work etc.): cika basia, water drawn yesterday; kami basia, work that could not be completed yesterday; mai basia, rice left over from yesterday." },
+            { word: "ba-si-thip", class: "ref.", meaning: "See basthip." },
+            { word: "ba-sthip", class: "v.t.", meaning: "throw or smash to the ground violently." },
+            { word: "bat¹", class: "n.", meaning: "1. guilt or uncleanness that requires to be remitted by paying a fine. 2. (verbal) bat paia, have to pay a fine for some guilt or ritual uncleanness." },
+            { word: "bat²", class: "v.t.", meaning: "(~ bá) weave (baskets, bamboo works like dam, coren etc.)." },
+            { word: "bat³", class: "v.t.", meaning: "(~ bá) erect, set up (post, pillar, stone etc.): nophak bata, set up a pillar for the house." },
+            { word: "ba-ta", class: "n.", meaning: "small bamboo basket for keeping betel nut, betel leaf, tobacco etc.: bata hampreh (jati hampreh), n. a variety of thatch-grass with long and broad leaves. bata mímuk, n. big variety of mushroom that grows on land and is similar to in shape." },
+            { word: "ba-tai", class: "v.i.", meaning: "exceed, go across a particular stage or time: rahsah bataia, be past midday; somai bataia, be past the proper time or season." },
+            { word: "ba-tak", class: "ref.", meaning: "See butuk." },
+            { word: "-ba-tah", class: "suff.", meaning: "indicating verbal noun as subject in plural: khár-batah, those who do; rákhu-batah, those who give." }, // Corrected -ba-tan -> -ba-tah
+            { word: "ba-tao", class: "n.", meaning: "parrot." },
+            { word: "bat-ci-a", class: "ref.", meaning: "See bacia." },
+            { word: "ba-thah", class: "n.", meaning: "1. enclosed area for herding together cattle. 2. (verbal) bathah rákhua, herd cattle together in~." }, // Corrected ba-than -> ba-thah
+            { word: "ba-that", class: "v.t.", meaning: "(~ bathá) plant, erect, set up (post, pillar, stone): nophak bathata, erect a pillar for the house; phóhka bathata, erect a stone for the stove or fire-place." },
+            { word: "ba-thip", class: "v.t.", meaning: "cover, close (ear, nose, eyes etc. esp. temporarily with hand): kumpak bathipa, cover nose (with hand); neken bathipa, cover eyes (with hands)." },
+            { word: "ba-tri-", class: "cl.", meaning: "for number of births (animal): batri-sa, one birth." },
+            { word: "bau-bau", class: "a.", meaning: "have or be in plenty, in excess, abundant: cika baubaubana hal baina janca, as there is too much water it is difficult to plough; ube khúmah kámah baubau, he has thick and bushy beard." },
+            { word: "-be", class: "suff.", meaning: "1. indicating definitive marker: nok-be khame réhjo, the house was burnt down. 2. meaning 'what about?': nen-be?, what about the cloth? 3. indicating a mild emphasis as if stating the obvious or the natural esp. in a reply to a question: ame saksahjana-be, I will manage alone (as a reply to 'why do you work all alone? ); paisa tohca-be, there is no money (as a reply to 'why don't you go to school?')." },
+            { word: "be-bok", class: "n.", meaning: "a big tree having unbranched stem for a considerable height found commonly by riverside (Tetrameles nudeflora)." },
+            { word: "be-bra", class: "a.", meaning: "stupid, ignorant." },
+            { word: "be-da-ga-i", class: "interrog.", meaning: "where?, in which place?." },
+            { word: "be-do", class: "interrog.", meaning: "when, at what time. bedoba, adv. at some time. bedoba bedoba, adv. at some time, occasionally. bedobatah, adv. some time in the future. bedoba bedobatah, adv. at some time in the future." },
+            { word: "be-gah-da", class: "ref.", meaning: "See behganda." }, // Corrected be-gan-da -> be-gah-da
+            { word: "bek", class: "v.t.", meaning: "sweep: nok há beka, sweep and clean house and surroundings especially as part of a ritual." },
+            { word: "be-kai", class: "interrog.", meaning: "which?, which one?" },
+            { word: "be-ka-pe-ke", class: "interrog.", meaning: "when?, at what time?" },
+            { word: "be-ka-thá-ni", class: "interrog.", meaning: "of what kind?, of what type?, of what behaviour?, of what character?" },
+            { word: "be-khar-e", class: "interrog.", meaning: "(~ bekhre ~ bekhere) how, in what way." },
+            { word: "be-ko-ro", class: "interrog.", meaning: "(~ betokoro) in which way, by which way." },
+            { word: "bek-si-ri", class: "n.", meaning: "thin and long pieces of bamboo placed across the length of the bamboo walls of a house or used to tie thatch on the roof." },
+            { word: "be-la-", class: "cl.", meaning: "for half a day: bela-sa, half a day." },
+            { word: "be-la", class: "ref.", meaning: "See prih." }, // Corrected prin -> prih
+            { word: "bel-bel", class: "adv.", meaning: "soft and watery: belbel soe réha, rot and become soft and watery. belbel bulbul, a. (echo) very soft and watery." },
+            { word: "bem-phlah", class: "ref.", meaning: "See behphlah." }, // Corrected bem-phlan -> bem-phlah
+            { word: "beh-cek", class: "interrog.", meaning: "how much?, how many?." }, // Corrected ben-cek -> beh-cek
+            { word: "beh-cik", class: "ref.", meaning: "See káhcik." }, // Corrected ben-cik -> beh-cik
+            { word: "beh-dek", class: "interrog.", meaning: "how much? (used of length and depth)." }, // Corrected ben-dek -> beh-dek
+            { word: "beh-", class: "interrog.", meaning: "where?, in which place? as in: beh-a?, to where?, to which place?; beh-guduh?, in which direction?; beh-i?, of which place?, from which place?; beh-ipara?, from where?, from which place?" }, // Corrected ben- -> beh-
+            { word: "beh-a", class: "a.", meaning: "deaf." }, // Corrected ben-a -> beh-a
+            { word: "beh-beh", class: "ref.", meaning: "See cehceh." }, // Corrected ben-ben -> beh-beh
+            { word: "beh-boh", class: "ref.", meaning: "See libak." }, // Corrected ben-bon -> beh-boh
+            { word: "beh-gan-da", class: "interrog.", meaning: "(~ beganda) of what kind?, type or nature?: behgandakai?, of what kind?; behganda kháre?, in what way?" }, // Corrected ben-gan-da -> beh-gan-da
+            { word: "beh-gi", class: "ref.", meaning: "See bhehgi néhgi." }, // Corrected ben-gi -> beh-gi
+            { word: "be-re-bre-cu", class: "a.", meaning: "contorted (lips or mouth of one about to weep): khú-cem berebrecu cáha, mouth be in a contorted shape." },
+            { word: "ber-ga", class: "a.", meaning: "different, dissimilar, another. berga berga, a. varied, different (plural sense)." },
+            { word: "bet", class: "v.i.", meaning: "(~ bé) decompose: bete réha, decompose." },
+            { word: "be-to-ko-ro", class: "ref.", meaning: "See bekoro." },
+            { word: "bha-bi", class: "ref.", meaning: "See babi." },
+            { word: "bha-gi-na", class: "ref.", meaning: "See bagina." },
+            { word: "bha-gi-ni", class: "ref.", meaning: "See bagini." },
+            { word: "bhai", class: "ref.", meaning: "See bai¹." },
+            { word: "bha-lah bha-lah", class: "ref.", meaning: "See balah balah." },
+            { word: "bhar", class: "ref.", meaning: "See bar²." },
+            { word: "bí¹", class: "v.i.", meaning: "break: bíe réha, break." },
+            { word: "bí²", class: "v.t.", meaning: "roast or cook in banana leaf." },
+            { word: "bi-a", class: "n.", meaning: "1. marriage. 2. (verbal) bia cáha, hold marriage. bia khára, marry." },
+            { word: "bi-ba", class: "a.", meaning: "unspecified: biba okoti, at some time; biba tali, at some time; biba hásoh, a certain country." },
+            { word: "bi-bi", class: "n.", meaning: "1. elder sister, bibibrah bibrasah, n. an elder sister and younger sibling: bibrasah metham, an elder sister and two younger siblings, bibrasah sarijon, an elder sister and three younger siblings. 2. (verbal) bibi mána, be related as an elder sister." },
+            { word: "bi-bra", class: "n.", meaning: "elder sister (definitive)." },
+            { word: "bi-brah", class: "ref.", meaning: "See bibi." }, // Corrected bibrasan -> bibrah
+            { word: "bi-bur", class: "n.", meaning: "spider: bibur sih khaa, spider weaves a web. bibur sihsap, n. cobweb." },
+            { word: "bi-crai", class: "v.t.", meaning: "search, look for." },
+            { word: "bi-dai", class: "n.", meaning: "1. departure; leave-taking. 2. (verbal) bidai ráa, take leave of. bidai rákhua, give farewell." },
+            { word: "bidi", class: "n.", meaning: "(pl. ~roh) grandmother. bidibra, grandfather (definitive). bidibrah, n. grandmother and grandchild: bidibrah metham, grandmother and two grandchildren; bidibrah sarijon, grandmother and three grandchildren. bidicuh, n. great grandmother. bidikh¡rao, n. great great grandmother, grandmother's mother." },
+            { word: "bi-gu-duh", class: "interrog.", meaning: "how! (used with an element of surprise at having completed a task surprisingly fast): biguduh sokbaijo!, how did (subj.) come so fast!; biguduhan khárna johjo!, how could (obj.) have been done so fast!" }, // Corrected bigudun -> biguduh
+            { word: "bi-há-dam", class: "interrog.", meaning: "which place?" },
+            { word: "-bi-jam", class: "ref.", meaning: "See -bijah." },
+            { word: "-bi-jah", class: "suff.", meaning: "(~ -bijam) indicating pl. (general): neh-bijah, cloths or clothes; másu-bijah, cattle." }, // Corrected -bi-jan -> -bi-jah
+            { word: "bi-ji", class: "ref.", meaning: "See bihji." }, // Corrected binji -> bihji
+            { word: "bi-jo-a-i", class: "interrog.", meaning: "when?, at what time? (esp. in relation to some activity)." },
+            { word: "bih-ji", class: "n.", meaning: "(~ biji) needle. bihji hák- har, n. eye of needle." }, // Corrected bin-ji -> bih-ji
+            { word: "bih-tuh", class: "interrog.", meaning: "how much? (used of size)." }, // Corrected bin-tun -> bih-tuh
+            { word: "bih-brap", class: "v.i.", meaning: "twinkle, flash as light or lightning: bársih bih-brap bih-brap naia, glow-worms twinkle; rah bih- brapa, lightning flashes." }, // Corrected bin-brap -> bih-brap
+            { word: "bi-oh", class: "n.", meaning: "childbirth, parturition." }, // Corrected bi-on -> bi-oh
+            { word: "bi-ri¹", class: "n.", meaning: "(~ biria¹) round bamboo ring placed inside and outside the body of fish-trap called cepa to maintain its shape." },
+            { word: "bi-ri²", class: "n.", meaning: "(~ biria²) metal frame used as stove." },
+            { word: "bi-ri-a¹", class: "ref.", meaning: "See biri¹." },
+            { word: "bi-ri-a²", class: "ref.", meaning: "See biri²." },
+            { word: "bis", class: "n.", meaning: "1. poison. 2. (verbal) bis naa, be poisonous." },
+            { word: "bi-sar", class: "n.", meaning: "1. judgement. bisardam, n. court, place where cases are heard and judgement is passed. 2. (verbal) bisar khára, judge, pass judgement" },
+            { word: "bi-si¹", class: "cl.", meaning: "for four bundles of paddy: mai bisi-sa, four bundles of paddy." },
+            { word: "bi-si²", class: "interrog.", meaning: "where: bisina?, to where?; bisini?, from which place?, from where?; bisinipara?, from where? bisiba, adv. somewhere. bisiba bisiba, adv. in some place, somewhere." },
+            { word: "bi-si-bah-khoh", class: "n.", meaning: "1. allergy, skin irritation. 2. (verbal) bisibahkhoh pohsaa, have an allergic reaction." }, // Corrected bi-si-ban-khon -> bi-si-bah-khoh
+            { word: "bi-trap-i-ah", class: "adv.", meaning: "just at that time, just then." }, // Corrected bi-trap-i-an -> bi-trap-i-ah
+            { word: "bo", class: "interrog.", meaning: "where? (of things or situations not seen, not known, with an element of doubt): bo, ame nukca!, where, I don't see it!" },
+            { word: "bó", class: "v.t.", meaning: "clear (growth of grass, forest etc.)." },
+            { word: "bo-ba", class: "a.", meaning: "dumb: saksa boba kai, a dumb person; boba cáha, become dumb." },
+            { word: "bo-bai", class: "v.i.", meaning: "speak, converse." }, // Corrected v.t. -> v.i.
+            { word: "bo-blek", class: "n.", meaning: "one who refuses to speak or one who does not know how to speak appropriately or properly. boboblek, n. one who refuses to speak." },
+            { word: "bo-bre", class: "v.i.", meaning: "having pupil of light colouring. bobobre, a. be dilated and rolling violently (eyes)." },
+            { word: "bo-da", class: "n.", meaning: "a phlegmatic person, one who does not react to anything." },
+            { word: "bó-dom", class: "n.", meaning: "(~ bokdam ~ bokdom) 1. stomach. 2. (verbal) bódom bokhota, have hunger satisfied, have a fill, have enough to eat. bódom naa, be pregnant, be with child. 3. (idiom) bódom gósani, of the same mother, having same mother. bódom koke sá, (bódom táme sá), be hungry, have nothing to eat, (often said disparagingly of someone who is lazy, lit. eat beating the stomach)." },
+            { word: "bo-droh", class: "n.", meaning: "dung beetle." }, // Corrected bo-dron -> bo-droh
+            { word: "boi¹", class: "v.i.", meaning: "flow." },
+            { word: "boi²", class: "a.", meaning: "be muddied or muddled (of water)." },
+            { word: "boi-bak", class: "n.", meaning: "a creeper. boibakduri, n. powdery particles on its fruit. boi-sak, a plant (found usu. along streams). boisakduri, n. powdery particles on its leaves. boisakduri boibakduri, n. (arch., echo) lit. skin irritants, fig. agents of troubles and difficulties." },
+            { word: "boi-tha", class: "n.", meaning: "oar" },
+            { word: "bo-ja", class: "n.", meaning: "bundle (esp. things of considerable length like firewood)." },
+            { word: "bó-ja", class: "n.", meaning: "1. a variety of non-edible yam that does not get soft even if boiled for a long time. 2. (idiom) bojá rota, speak or discuss endlessly without reaching any fruitful conclusion." },
+            { word: "bok", class: "v.i.", meaning: "be white. bokbok, a. & adv. very white, as white: bokbok cithoa, be white and beautiful. bok- bok krímkrín, adv. (echo) elegantly and beautifully (dress)." },
+              // Added C words below
+              { word: "-ca", class: "suff.", meaning: "indicating negative of verbs: nem-ca, not good; réh-ca, does not go; réh-ca-nata, did not go, had not gone; réhe-ca, did not go; réh-ca-eta, is not going; réh-ca-nom¡n, would not have gone; réhkhu-ca, has not gone yet." },
+            { word: "cá-bah", class: "a. & adv.", meaning: "later on, after, behind: cábah cáha, be late, be not in time, be later than others. cábah cábah, adv. close behind. cábahbatah, n. those late. cábahi, adv. finally, later on, behind. cábah jíkhari, adv. (echo) in the future, finally, in the end." },
+            { word: "cá-bek", class: "n.", meaning: "husk." },
+            { word: "ca-bla-a-tah", class: "adv.", meaning: "(~ cabla hatah) to the left-hand side: cablaatah guduh, in the direction of the left-hand side." },
+            { word: "ca-bla ha-tah", class: "ref.", meaning: "See cablaatah." },
+            { word: "cá-bram", class: "ref.", meaning: "See cak-bram." },
+            { word: "cá-ca-brak", class: "v.t.", meaning: "spread (legs) apart." },
+            { word: "cá-ca-kom", class: "n.", meaning: "ring." },
+            { word: "cá-ca-kor", class: "n.", meaning: "nail (finger, toe)." },
+            { word: "ca-ceh", class: "n.", meaning: "1. bony nail-like growth on the posterior of legs of cocks or similar growth of other creatures. 2. (verbal) caceh naha, have such a body-part, have a sixth finger or toe (humans)." },
+            { word: "cá-da-gur", class: "a.", meaning: "(~ madagur) (echo) very thick." },
+            { word: "cá-del", class: "v.i.", meaning: "very thick, cádedel, a. be very thick." },
+            { word: "cá-dop", class: "n.", meaning: "chaff." },
+            { word: "cá-dra", class: "v.i.", meaning: "become hot or strong (sun): rahsah cádrabaeta, sun is getting hot." },
+            { word: "cá-ga-dam", class: "n.", meaning: "place where waste is thrown." },
+            { word: "cá-ga-dop", class: "n.", meaning: "threshold, plank or bamboo matting placed across bottom of doorway." },
+            { word: "cá-gam", class: "n.", meaning: "stump (of tree)." },
+            { word: "ca-ga-na", class: "v.t.", meaning: "(~ cakhara) use." },
+            { word: "ca-gr¡m", class: "v.i.", meaning: "charge or advance (in a group)." },
+            { word: "ca-ha", class: "n.", meaning: "1. tea: caha kutúha (caha rota), boil or prepare tea. 2. (verbal) caha sóha, place pot on stove for boiling tea." },
+            { word: "cai", class: "n.", meaning: "1. song. 2. (verbal) cai caruna, sing songs. cai taka, compose songs or poetry." },
+            { word: "cai-thop", class: "ref.", meaning: "See tokrah." },
+            { word: "ca-jí", class: "n.", meaning: "waste." },
+            { word: "-cak¹", class: "suff.", meaning: "meaning 'one or once more': breksa-cak, one more gourd-ful; caosa-cak, once more; khúsa-cak, one more mouthful." },
+            { word: "cak²", class: "n.", meaning: "leaf, page of a book: cak dagata, shed leaves. caknari, n. new shoots, tender leaves." },
+            { word: "cak³", class: "n.", meaning: "a contrivance for fishing made by splitting one end of bamboo pole into several ribs and fastened to a circular ring at the end with a net tied to the mouth and projecting outward between the split ribs." },
+            { word: "cak⁴", class: "v.t. & v.i.", meaning: "1. help, support. 2. take shelter from: phaci caka, take shelter from rain; rahsah caka, take shelter from the sun. 3. light (fire): bár caka, light or kindle a fire." },
+            { word: "ca-ka", class: "n.", meaning: "leg as in: (verbal) caka súi r¬jama, walk tiptoe. caka súne r¬jama, walk on sole of feet." },
+            { word: "ca-ka-rah-sah", class: "n.", meaning: "shin." },
+            { word: "cak-ba-ju", class: "n.", meaning: "bangle (usually of silver) worn by Rabha women above the elbow." },
+            { word: "cak-bram", class: "v.i.", meaning: "(~ cábram) be skilled (in hand work)." },
+            { word: "cak-dúh", class: "v.i.", meaning: "be effective (esp. medicine given by someone)." },
+            { word: "cá-kham", class: "n.", meaning: "foot (people). cák hamra, n. foot side (of bed, a sleeping place, a sleeping person etc.), lower part (of a plot of land, a stretch of rivulet etc.): cákhamrai, at the foot-side." },
+            { word: "ca-khar", class: "ref.", meaning: "See cagah." },
+            { word: "cá-kha-thoh", class: "n.", meaning: "1. knee 2. (verbal) cákhathoh súha, kneel." },
+            { word: "cá-khop", class: "n.", meaning: "(arch.). footwear, sandal." },
+            { word: "cak-i", class: "postpos.", meaning: "with n. at nominative meaning 'by, at the hands of' (in passive constructions): cah caki kokmásanata, by whom was (subj.) beaten." },
+            { word: "cak-koh", class: "n.", meaning: "middle rib of leaf." },
+            { word: "ca-kla", class: "a.", meaning: "round. cakla cukla, a. (echo) round." },
+            { word: "cak-nar", class: "v.i.", meaning: "be deft, be fast (with hand at work)." },
+            { word: "ca-kol", class: "ref.", meaning: "See cakor." },
+            { word: "ca-kor", class: "n.", meaning: "(~ cakol) 1. servant. cakor nokor, n. (echo) servant(s). 2. (verbal) cakor dáha, enter the service of another. cakor khatia (cakor khutia), work as a servant." },
+            { word: "ca-kri", class: "n.", meaning: "1. employment esp. government job. cakri bakri, n. (echo) employment. 2. (verbal) cakri khutia (cakri khatia), work as a government employee." },
+            { word: "cak-túr", class: "v.i.", meaning: "put hand into (bags, holes, pockets etc.)." },
+            { word: "ca-lah", class: "ref.", meaning: "See alah." },
+            { word: "cám", class: "v.i.", meaning: "wear out, fray: cáme réha, wear out." },
+            { word: "cá-mah", class: "n.", meaning: "1. foot impressions of animals, impression or mark made by vehicles. 2. (verbal) cámah phana, track down animals following their footprints. cámah taka, leave or form foot-impressions." },
+            { word: "cá-mo-sa", class: "ref.", meaning: "See tátheh." },
+            { word: "cam-pi", class: "n.", meaning: "1. honeycomb. 2. n. one of flat fleshy undersized edible sectors of jackfruit." },
+            { word: "cah", class: "v.t.", meaning: "prepare and keep the concoction for brewing rice beer: cokó caha, keep the mixture for preparing rice beer to brew." },
+            { word: "cah-da", class: "n.", meaning: "1. donation, contribution (generally a fixed amount and collected for a common purpose). 2. (verbal) cahda coka, collect contribution." },
+            { word: "cah-da-ri-si", class: "n.", meaning: "a name for God." },
+            { word: "cah-di-a", class: "a.", meaning: "bald: cahdia cáh, become bald." },
+            { word: "cah-dri", class: "n.", meaning: "round bamboo sieve generally used for separating paddy and rice." },
+            { word: "cah", class: "interrog.", meaning: "who?" },
+            { word: "cáh¹", class: "v.i.", meaning: "happen, be, become." },
+            { word: "cáh²", class: "v.i.", meaning: "hit (target, etc.)." },
+            { word: "cáh-ba-tai", class: "v.i.", meaning: "exceed, go across a particular stage: cokó cáhbataia, exceed the normal state of fermentation of rice-beer." },
+            { word: "cáh-cáh", class: "v.i.", meaning: "be taller or higher than usual (objects like table, chair etc.)." },
+            { word: "cah-gra", class: "n.", meaning: "raised bamboo platform used as bed-stead." },
+            { word: "cáh-phuh", class: "v.i.", meaning: "come to pass, happen, take place, be fulfilled." },
+            { word: "cah-se", class: "adv.", meaning: "perhaps, who knows! cahsedei!, adv. who knows, would not know (with a strong hint that the statement referred to is not true)." },
+            { word: "cáh-thu-phuh", class: "v.t.", meaning: "fulfil, cause to come true." },
+            { word: "cao-", class: "prefix", meaning: "prefixed to numerals to build some adverbs of frequency: cao-sa, once. caoni cao, adv. again and again." },
+            { word: "cao", class: "v.t.", meaning: "winnow, clean with material inside the winnowing fan." },
+            { word: "cap¹", class: "n.", meaning: "1. a raft made by tying bamboo or logs or banana trunks together. 2. (verbal) cap khaa, to tie logs or bamboo into a raft." },
+            { word: "ca-pa", class: "", meaning: "as in: capa khára, v.t. print." },
+            { word: "ca-pek cu-pek", class: "a. & adv.", meaning: "(echo) said of a style of walking that resembles a duck's: capek cupek rájama, walk with a swaying movement." },
+            { word: "cá-pha-khat", class: "v.i.", meaning: "(~ cáphakha) have cut-like wounds that develop below toes." },
+            { word: "cá-phrat", class: "ref.", meaning: "See cáphrit." },
+            { word: "cá-phrit", class: "v.i.", meaning: "(~ cáphrat~ cáphra) slip and fall off from hand, drop unintentionally." },
+            { word: "cá-phuk", class: "v.i.", meaning: "trip, be obstructed: hena hona cian cian cáphuke kinata, being distracted by looking around (subj.) tripped and fell; kai ribae tohbana kami cáphuke réhjo, as people came repeatedly work was obstructed." },
+            { word: "ca-plak ca-plak", class: "a. & adv.", meaning: "as wafers or chips: caplak caplak khána, cut into thin and flat pieces." },
+            { word: "ca-plaksa", class: "n.", meaning: "(~ ceplaksa) one thin flat slice." },
+            { word: "cap-thai", class: "n.", meaning: "posterior or lateral side of thigh." },
+            { word: "ca-ra-cam-thé", class: "a.", meaning: "not smooth, having dents or small depressions in surface: noktala caracamthé cáhjo, there are plenty of small holes or depressions on the floor." },
+            { word: "ca-ra-ca-pek", class: "adv.", meaning: "resembling the style of a duck (walk)." },
+            { word: "ca-rai", class: "v.t.", meaning: "shepherd, look after cattle: másu caraia, graze cattle." },
+            { word: "ca-rak", class: "ref.", meaning: "See cirik." },
+            { word: "cá-rah¹", class: "ref.", meaning: "See mai." },
+            { word: "cá-rah²", class: "n.", meaning: "festering abscess that forms in sole of foot." },
+            { word: "ca-ri¹", class: "n.", meaning: "(~ sari²) breath. 2. (verbal) cari ráa, breathe." },
+            { word: "cá-ri²", class: "n.", meaning: "seed kept for planting." },
+            { word: "ca-ri-cuh", class: "n.", meaning: "1. sigh. 2. (verbal) car- icuh ráa, heave a sigh." },
+            { word: "cá-roh", class: "v.i.", meaning: "be steady and strong (esp. child beginning to walk)." },
+            { word: "car-pak", class: "n.", meaning: "1. spirit, soul. 2. (verbal) carpak kheha, be alive. carpak koa, give up one's life for a cause, be a martyr. carpak phakhata, breath one's last (lit. soul snaps or separates)." },
+            { word: "ca-ruh", class: "v.t.", meaning: "sing: cai caruha, sing a song." },
+            { word: "cat¹", class: "v.t.", meaning: "(~ cá) fix handles for instruments." },
+            { word: "cat²", class: "v.t.", meaning: "(~ cá) be thick, be expensive: dam cata, be expensive, dear, costly; gr¡m cata, forest be thick, vegetation be thick." },
+            { word: "cá-tar", class: "n.", meaning: "base or beginning (of tree, story, situation etc.), side, shoulder (of road, wall, fence etc.): cátar phana, search for the base or root cause." },
+            { word: "cá-thoh", class: "n.", meaning: "stem, stalk supporting fruit, flower or leaf." },
+            { word: "cá-thu-phuk", class: "v.t.", meaning: "to cause to trip." },
+            { word: "cá-thi-phrit", class: "v.t.", meaning: "to cause to fall from the hand." },
+            { word: "cá-thir", class: "v.i.", meaning: "advance, proceed boldly, charge, rush impetuously." },
+            { word: "ca-ti", class: "n.", meaning: "open oil lamp." },
+            { word: "cá-tla", class: "n.", meaning: "1. courtyard, area in front of the house, area enclosed by the houses. 2. (idiom) cátla samdubla dima, family be completely wiped out (usu. said as a curse)." },
+            { word: "cau-cau", class: "adv.", meaning: "very (dirty), plenty, in big numbers, to a high degree: cau- cau subuka, be very dirty; cóh cau- cau, there are plenty of worms; sábra kantra caucau sána rinabe tohca, there are plenty of children and nothing to eat." },
+            { word: "cau-li", class: "n.", meaning: "wood-wool, thin paring of wood, shavings, small bits and pieces of wood." },
+            { word: "ce-ceh", class: "n.", meaning: "the fleshy part of crabs." },
+            { word: "cek¹", class: "n.", meaning: "1. fishing net tied on bamboo diagonally placed. 2. (verbal) cek bota, fish with. cek coka, fish with (lit. lift the net). cek rapa, weave a net. cek saia, lower and keep a net under water to be brought up some time later." },
+            { word: "cek²", class: "v.i.", meaning: "damp, wet, moist." },
+            { word: "-ce-ke-na", class: "suff.", meaning: "meaning 'till, up to, until' (place, time, time of action etc.): nok-cekena, till the house; rahsi- cekena, till evening, rahsah dogó-cekena, till sunrise." },
+            { word: "ce-leh", class: "v.i.", meaning: "be with several sections as many leaflets on one leaf. celeh celeh, a. having several torn but not detached sections: j¡gar kiemene ráicakbijah celeh celeh cáne réhjo, as a result of the hailstorm banana leaves were torn." },
+            { word: "ce-leh-ga", class: "n.", meaning: "small triangular bamboo frame with rope at each corner to keep things (esp. cooked rice safe from cats, rodents etc.) suspended in mid-air." },
+            { word: "cé-na", class: "ref.", meaning: "See ná." },
+            { word: "ceh-crai", class: "v.i.", meaning: "shout loud." },
+            { word: "ceh-tleh", class: "n.", meaning: "tamarind." },
+            { word: "céh¹", class: "v.i.", meaning: "about to begin, be about to: sina céha, be about to die, be at the point of death. céhe, adv. early: céhean réha, go early; kh¡sami céhe, before it gets dark; phari céhe, before it is late night; phuhi céhe, early in the morning." },
+            { word: "céh²", class: "v.i.", meaning: "be light, not heavy." },
+            { word: "ceh-ceh", class: "v.i.", meaning: "be shrill. cehceh beh- beh, adv. (echo) noisily, boisterously." },
+            { word: "céh-céh", class: "a.", meaning: "have sth. in prominence: khúmah céhcéh, have moustache twisted at the ends; kumpak céhcéh, have a prominent nose; tó jímih céhcéh, bird or fowl has prominent and beautiful tail." },
+            { word: "ceh-kna", class: "n.", meaning: "a branching, a forking." },
+            { word: "ceh-krao", class: "n.", meaning: "(~ cehkroi) a variety of frog with long body and capable of climbing trees." },
+            { word: "ceh-kroi", class: "ref.", meaning: "See cehkrao." },
+            { word: "ce-pa¹", class: "n.", meaning: "1. a bamboo fish trap that is round and bulging in the middle and flat at the ends. 2. (verbal) cepa rapa, make a ~. cepa saia, place a ~ to trap fish." },
+            { word: "ce-pa ca-pa", class: "a.", meaning: "crumbled, crushed: cepa capa kháre dibía, crumble and crush." },
+            { word: "cep-ah", class: "adv.", meaning: "tightly between fingers (catch): cepah ríma, catch tight between fingers." },
+            { word: "cep-cep", class: "adv.", meaning: "forcefully and many together (catch): cepcep réma, catch (someone) all together and forcefully." },
+            { word: "ce-plak", class: "ref.", meaning: "See caplak." },
+            { word: "ce-pok", class: "v.i.", meaning: "(~ cipok ~ ciplok) be insipid, be tasteless (and watery). cepok cepok, a. very tasteless and insipid. cepopok, a. very insipid and tasteless." },
+            { word: "ce-preh", class: "n.", meaning: "sesame, cepreh thuci, n. sesame oil." },
+            { word: "cér¹", class: "v.i.", meaning: "hot (usu. used only with suff. -ba): rahsah cérbaeta, sun is becoming very hot. cér-cér, adv. in a very sharp or intense manner (pain, heat etc.): cércér saa, pain very much; rahsah cércér túha, sun is very hot." },
+            { word: "cér²", class: "v.i.", meaning: "split: khúcar céra, lips get cuts (as in winter)." },
+            { word: "cér-ca-bak", class: "v.t.", meaning: "pull and wrench apart (things closed or tight): khúcem cércabaka, open mouth (esp. by pulling jaws apart)." },
+            { word: "cér-ca-kao", class: "v.t.", meaning: "pull and open apart or asunder (esp. mouth of fish, animal etc.)." },
+            { word: "ce-re-ce-prek", class: "adv.", meaning: "into small pieces and strips (tear): cereceprek ceta, tear into small pieces." },
+            { word: "cér-kha-ti", class: "n.", meaning: "strip of bamboo used to keep thread on loom separate according to design being woven." },
+            { word: "cé-sa", class: "a.", meaning: "a piece, a strip, a small section (usu. of flat things and when torn or cut): rái césa, a section of banana leaf." },
+            { word: "cet", class: "v.t.", meaning: "(~ cé) tear (cloth, paper, leaves etc.)." },
+
+            // Added Sample D words below
+             { word: "da-bi", class: "n.", meaning: "1. a demand. 2. (verbal) dabi khára, demand, make a demand. 3. v.t. demand." },
+            { word: "da-bo-ne", class: "n.", meaning: "a big needle or sharpened peg used as needle to stitch mouth of sacks etc. and also used to string together big fish while fishing: dabone suka, string fish together with a ~." },
+            { word: "da-ci", class: "adv.", meaning: "jokingly, not seriously, for fun, as jest: daci ¡na, say as fun. daci daci, adv. jokingly." },
+            { word: "da-da", class: "n.", meaning: "1. (pl. ~roh) elder brother. dadabra, n. same as dada (definitive). dadabrah, n. elder brother and younger sibling: dadabrah kamih, an elder brother and a younger sibling; dadabrah sarijon, an elder brother and three younger siblings. 2. (verbal) dada mána, be related as an elder brother." },
+            { word: "da-da-gat", class: "v.t.", meaning: "(~ dadagá) cause to fall, cause to come off (leaves, things attached)." },
+            { word: "da-dui", class: "v.i.", meaning: "walk (child language)." },
+            { word: "da-ga-i", class: "postpos.", meaning: "(~ digi) meaning 'in, at, on': i-dagai; here, in this place." },
+            { word: "da-gai", class: "v.t.", meaning: "brand (done generally with hot iron or by the cross-section of three bamboo tied together and dipped in indelible ink)." },
+            { word: "da-gat", class: "v.i.", meaning: "(~ dagá) fall, come off, detach (leaves, things so attached)." },
+            { word: "dai¹", class: "n.", meaning: "1. offence. 2. (verbal) dai khára, commit an offence." },
+            { word: "dai²", class: "n.", meaning: "compensation, fine, penalty: dai boraia, pay a fine or compensation." },
+            { word: "dai³", class: "v.t.", meaning: "extend boundary: hádam daia, encroach on land." },
+            { word: "dái", class: "v.i.", meaning: "have a landslide: há dáie réhjo, earth slid down, had a landslide." },
+            { word: "dai-di¹", class: "n.", meaning: "a gong (musical instrument): daidi koka (daidi táma), beat a gong." },
+            { word: "dai-di²", class: "n.", meaning: "1. relatives from the father's side: daidini há, ancestral property handed down from father to son. 2. n. a sub-clan: daidi barai, the ~ sub-clan." },
+            { word: "dak", class: "v.t.", meaning: "pluck (fruits, flowers, leaves etc.), separate out, bargain." },
+            { word: "da-ket", class: "n.", meaning: "1. robber. 2. (verbal) daket khára, rob." },
+            { word: "da-kha", class: "", meaning: "as in: (verbal) dakha khaa, v.i. coagulate, solidify." },
+            { word: "da-kha da-kha", class: "a. & adv.", meaning: "as coagulated matter: kalamkai kai tuksidoh sí dakha dakha dogota, when the sick man coughs blood come out as coagulated." },
+            { word: "da-khap-", class: "cl.", meaning: "for patches of clouds: rahkohp dakhap-sa, a patch of cloud." },
+            { word: "da-khe-la", class: "n.", meaning: "a piece of bamboo or wood that is employed to throw at something (to pluck fruits, at birds and animals to drive them away etc.): dakhela koa, throw ~." },
+            { word: "da-khi", class: "v.t.", meaning: "hide from, block vision." },
+            { word: "da-khla-", class: "ref.", meaning: "See dakhap-." },
+            { word: "da-khla da-khla", class: "ref.", meaning: "See dakhap dakhap." },
+            { word: "da-khor", class: "n.", meaning: "a kind of tree with yellow bunches of flowers whose bark used be chewed as a mild stimulant. dakhorphah, n. the ~ tree." },
+            { word: "da-kra", class: "adv.", meaning: "suddenly, unexpectedly, within a short time: kalamkai dakra páne réhjo, sickness suddenly took a turn far worse. dakra dikra, adv. (echo) suddenly, on the spur of the moment: dakra dikra sia, die suddenly without preparation." },
+            { word: "dal¹", class: "n.", meaning: "traditional Rabha shield (of rhinoceros hide and studded with four stars and a half-moon). dal toral, n. (echo) sword and shield." },
+            { word: "dal-²", class: "cl.", meaning: "for counting long and slender things including trees especially with Assamese numerals upwards of four and occasionally also with native numerals: pan dal-sa, one tree; khorok dal-nih, two strands of hair; bá cari dal, four bamboo." },
+            { word: "da-la", class: "n.", meaning: "1. round bamboo winnowing fan for cleaning rice: dala peke mai caoa, winnow paddy with ~. 2. a type of ear-ring (usu. of gold)." },
+            { word: "da-lai", class: "n.", meaning: "1. branch: dalai dogota (dalai dima), put forth branches. 2. (verbal) dalai r¡ta, prune branches." },
+            { word: "da-lan", class: "v.i.", meaning: "flat and big: cak dalana, leaf is big; nakor dalana, ear is big. dalalah, a. & adv. very flat and big: cak dalalah cuha, leaf is very big." },
+            { word: "da-le", class: "ref.", meaning: "See dole." },
+            { word: "dam¹", class: "n.", meaning: "1. cost, price. 2. (verbal) dam cata, is expensive, is dear, is costly. dam daka, bargain." },
+            { word: "dam²", class: "n.", meaning: "1. mat. damkúr, n. strips used for weaving mats. 2. (idiom) dam kaka, (dam kake réha), be bed-ridden, be laid up (lit. be bitten by the mat)." },
+            { word: "-dam³", class: "suff.", meaning: "indicates location of activity; bár-dam, fire-place, place where fire is lit; bai-dam, sacrificial place, a place dedicated to a deity where sacrifices are held regularly." },
+            { word: "dam⁴", class: "cl.", meaning: "for things heaped up: há dam-sa, one heap of mud; pan dam- anih, two heaps of wood." },
+            { word: "da-mai", class: "v.t.", meaning: "gather together into a heap: mai curcur damaie tana, gather paddy into a heap." },
+            { word: "da-mar-sa", class: "adv.", meaning: "a short while, for a short while: damarsa kami ráa, for a short period." },
+            { word: "dam-blak", class: "ref.", meaning: "See nukblak." }
+
+            // ... More 'b' words would continue here
+        ];
+
+        // --- DOM Elements ---
+        const searchRabhaInput = document.getElementById('search-rabha-input');
+        const searchEnglishInput = document.getElementById('search-english-input');
+        const resultsDiv = document.getElementById('results');
+        const resultsContainer = document.getElementById('results-container');
+        const bookmarksList = document.getElementById('bookmarks-list');
+        const bookmarksSidebar = document.getElementById('bookmarks-sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        // --- Bookmark State & LocalStorage ---
+        let bookmarkedWords = JSON.parse(localStorage.getItem('rabhaBookmarks')) || [];
+
+        // --- Utility function to escape special characters for RegExp ---
+        function escapeRegExp(string) {
+          // Escape special characters for use in a regular expression
+          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+        }
+
+        // --- Highlight function ---
+        function highlightMatches(text, query) {
+            if (!text || !query) return text || ''; // Return original text if no query or text
+            const escapedQuery = escapeRegExp(query);
+            // Create a case-insensitive global regular expression
+            const regex = new RegExp(escapedQuery, 'gi');
+            // Replace all occurrences with the highlighted version
+            return text.replace(regex, '<span class="highlight">$&</span>');
+        }
+
+
+        // --- Display Bookmarks ---
+        function displayBookmarks() {
+            bookmarksList.innerHTML = ''; // Clear current list
+            if (bookmarkedWords.length === 0) {
+                bookmarksList.innerHTML = '<p class="text-gray-400 text-center text-sm">No bookmarks yet.</p>';
+                return;
+            }
+
+            bookmarkedWords.forEach(word => {
+                const entry = vocabulary.find(item => item.word === word);
+                if (entry) {
+                    const li = document.createElement('div');
+                    li.className = 'p-2 bg-gray-100 rounded flex justify-between items-start text-sm';
+                    li.innerHTML = `
+                        <div>
+                            <p class="font-medium text-indigo-700">${entry.word}</p>
+                            <p class="text-xs text-gray-600 mt-1">${entry.meaning.substring(0, 50)}...</p>
+                        </div>
+                        <button onclick="removeBookmark('${entry.word}')" class="ml-2 text-red-500 hover:text-red-700 focus:outline-none p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    `;
+                    bookmarksList.appendChild(li);
+                }
+            });
+             // Update bookmark icons in search results if visible
+            updateVisibleBookmarkIcons();
+        }
+
+        // --- Toggle Bookmark ---
+        function toggleBookmark(word) {
+            const index = bookmarkedWords.indexOf(word);
+            if (index > -1) {
+                // Remove bookmark
+                bookmarkedWords.splice(index, 1);
+            } else {
+                // Add bookmark
+                bookmarkedWords.push(word);
+            }
+            // Save to localStorage
+            localStorage.setItem('rabhaBookmarks', JSON.stringify(bookmarkedWords));
+            // Update sidebar display
+            displayBookmarks();
+            // Update the specific button clicked
+            updateBookmarkIcon(word);
+
+        }
+
+         // --- Remove Bookmark (from sidebar) ---
+        function removeBookmark(word) {
+            bookmarkedWords = bookmarkedWords.filter(item => item !== word);
+            localStorage.setItem('rabhaBookmarks', JSON.stringify(bookmarkedWords));
+            displayBookmarks(); // Re-render sidebar
+            updateBookmarkIcon(word); // Update icon in search results if visible
+        }
+
+        // --- Update a specific bookmark icon ---
+        function updateBookmarkIcon(word) {
+             const button = document.querySelector(`.bookmark-btn[data-word="${word}"]`);
+             if (button) {
+                 const isBookmarked = bookmarkedWords.includes(word);
+                 button.classList.toggle('bookmarked', isBookmarked);
+                 // Update SVG icon based on bookmarked state
+                 button.innerHTML = isBookmarked ?
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>` : // Filled icon
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>`; // Outline icon
+             }
+        }
+
+        // --- Update all visible bookmark icons ---
+        function updateVisibleBookmarkIcons() {
+            const buttons = document.querySelectorAll('.bookmark-btn');
+            buttons.forEach(button => {
+                const word = button.getAttribute('data-word');
+                updateBookmarkIcon(word);
+            });
+        }
+
+
+        // --- Search Function ---
+        function handleSearch() {
+            const rabhaQuery = searchRabhaInput.value.toLowerCase().trim();
+            const englishQuery = searchEnglishInput.value.toLowerCase().trim();
+            resultsDiv.innerHTML = '';
+
+            if (!rabhaQuery && !englishQuery) {
+                 resultsDiv.innerHTML = '<p class="text-gray-500 text-center">Start typing in either search bar...</p>';
+                return;
+            }
+
+            const filteredResults = vocabulary.filter(entry => {
+                const wordMatch = !rabhaQuery || (entry.word && entry.word.toLowerCase().startsWith(rabhaQuery));
+                const meaningMatch = !englishQuery || (entry.meaning && entry.meaning.toLowerCase().includes(englishQuery));
+                return wordMatch && meaningMatch;
+            });
+
+            if (filteredResults.length > 0) {
+                filteredResults.forEach(entry => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'p-3 bg-white border border-gray-200 rounded-lg shadow-sm flex justify-between items-start';
+
+                    const highlightedWord = rabhaQuery ? entry.word.replace(
+                        new RegExp(`^${escapeRegExp(rabhaQuery)}`, 'i'),
+                        '<span class="highlight">$&</span>'
+                    ) : entry.word;
+
+                    const highlightedMeaning = englishQuery ? highlightMatches(entry.meaning, englishQuery) : entry.meaning;
+
+                    const isBookmarked = bookmarkedWords.includes(entry.word);
+                    const bookmarkIcon = isBookmarked ?
+                       `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>` :
+                       `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>`;
+
+                    entryDiv.innerHTML = `
+                        <div class="flex-grow pr-4">
+                            <p class="font-semibold text-indigo-700">${highlightedWord || 'N/A'}</p>
+                            <p class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-800">Class:</span> ${entry.class || 'N/A'}</p>
+                            <p class="text-sm text-gray-600 mt-1"><span class="font-medium text-gray-800">Meaning:</span> ${highlightedMeaning || 'N/A'}</p>
+                        </div>
+                        <button class="bookmark-btn flex-shrink-0 p-1 ${isBookmarked ? 'bookmarked' : ''}" data-word="${entry.word}" onclick="toggleBookmark('${entry.word}')">
+                           ${bookmarkIcon}
+                        </button>
+                    `;
+                    resultsDiv.appendChild(entryDiv);
+                });
+            } else {
+                 let message = 'No results found';
+                 if (rabhaQuery && englishQuery) {
+                     message += ` matching both "${searchRabhaInput.value}" and "${searchEnglishInput.value}".`;
+                 } else if (rabhaQuery) {
+                     message += ` for "${searchRabhaInput.value}".`;
+                 } else if (englishQuery) {
+                    message += ` for "${searchEnglishInput.value}".`;
+                 }
+                resultsDiv.innerHTML = `<p class="text-gray-500 text-center">${message}</p>`;
+            }
+        }
+
+         // --- Sidebar Toggle Function ---
+        function toggleSidebar() {
+            bookmarksSidebar.classList.toggle('open');
+            sidebarOverlay.style.display = bookmarksSidebar.classList.contains('open') ? 'block' : 'none';
+        }
+
+
+        // --- Initial Setup ---
+        resultsDiv.innerHTML = '<p class="text-gray-500 text-center">Start typing in either search bar...</p>';
+        displayBookmarks();
+
+    </script>
+
+</body>
+</html>
